@@ -1,4 +1,8 @@
+mod data;
+
 use rand::Rng;
+
+use crate::data::TestData;
 
 #[derive(Debug)]
 struct NeuralNetwork<const SIZE: usize> {
@@ -27,7 +31,7 @@ impl<const SIZE: usize> NeuralNetwork<SIZE> {
         Self {
             weights,
             bias: rng.random_range(0.0..1.0),
-            learning_rate: 0.1,
+            learning_rate: 0.001,
         }
     }
 
@@ -64,5 +68,19 @@ impl<const SIZE: usize> NeuralNetwork<SIZE> {
 }
 
 fn main() {
-    println!("Hello, world!");
+    let (tran_assert, test_inputs) = data::get_data("data.csv").unwrap();
+    let inputs = tran_assert.inputs;
+    let outputs = tran_assert.outputs;
+    let mut model: NeuralNetwork<2> = NeuralNetwork::new();
+
+    model.train(inputs, outputs, 100000);
+
+    for TestData { input, output } in test_inputs.iter() {
+        // Pass a set of inputs (two numbers) and get a prediction back which should be a sum of the two numbers
+        let prediction = model.predict(input);
+        println!(
+            "Input: {:?}, Prediction: {:.1}, result: {output}",
+            input, prediction
+        );
+    }
 }
