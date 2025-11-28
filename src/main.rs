@@ -4,64 +4,110 @@ use rand::Rng;
 
 use crate::data::TestData;
 
-#[derive(Debug)]
-struct NeuralNetwork<const SIZE: usize> {
-    weights: [f64; SIZE],
-    bias: f64,
-    learning_rate: f64,
-}
-
 fn sigmoid(x: f64) -> f64 {
     1.0 / (1.0 + (-x).exp())
 }
 
-fn derivative(x: f64) -> f64 {
-    x * (1.0 - x)
+fn dsigmoid(y: f64) -> f64 {
+    y * (1.0 - y)
 }
 
-impl<const SIZE: usize> NeuralNetwork<SIZE> {
+struct NeuralNetwork<const INPUT: usize, const HIDDEN: usize> {
+    w1: [[f64; INPUT]; HIDDEN], // Input → Hidden
+    b1: [f64; HIDDEN],
+
+    w2: [f64; HIDDEN], // Hidden → Output
+    b2: f64,
+
+    lr: f64,
+}
+
+impl<const INPUT: usize, const HIDDEN: usize> NeuralNetwork<INPUT, HIDDEN> {
     fn new() -> Self {
         let mut rng = rand::rng();
-        let mut weights = [0.; SIZE];
 
-        for weight in weights.iter_mut() {
-            *weight = rng.random_range(0.0..1.0);
+        // 初始化 w1
+        let mut w1 = [[0.0; INPUT]; HIDDEN];
+        for weights in w1.iter_mut() {
+            for w in weights.iter_mut() {
+                *w = rng.random_range(-1.0..1.0)
+            }
+        }
+
+        // 初始化 w2
+        let mut w2 = [0.0; HIDDEN];
+        for w in w2.iter_mut() {
+            *w = rng.random_range(-1.0..1.0);
         }
 
         Self {
-            weights,
-            bias: rng.random_range(0.0..1.0),
-            learning_rate: 0.001,
+            w1,
+            b1: [0.0; HIDDEN],
+            w2,
+            b2: 0.0,
+            lr: 0.1,
         }
     }
 
-    fn predict(&self, input: &[f64; SIZE]) -> f64 {
-        let mut sum = self.bias;
-        for (i, weight) in self.weights.iter().enumerate() {
-            sum += input[i] * weight;
+    #[allow(clippy::needless_range_loop)]
+    fn predict(&self, x: &[f64; INPUT]) -> f64 {
+        // Hidden layer
+        let mut h = [0.0; HIDDEN];
+        for j in 0..HIDDEN {
+            let mut sum = self.b1[j];
+            for i in 0..INPUT {
+                sum += self.w1[j][i] * x[i];
+            }
+            h[j] = sigmoid(sum);
         }
-        sigmoid(sum)
+
+        // Output layer (linear)
+        let mut y = self.b2;
+        for j in 0..HIDDEN {
+            y += self.w2[j] * h[j];
+        }
+        y
     }
 
-    fn train(&mut self, inputs: Vec<[f64; SIZE]>, outputs: Vec<f64>, epochs: usize) {
+    #[allow(clippy::needless_range_loop)]
+    fn train(&mut self, inputs: Vec<[f64; INPUT]>, outputs: Vec<f64>, epochs: usize) {
         for _ in 0..epochs {
-            for (i, input) in inputs.iter().enumerate() {
-                // Get a prediction for a given input
-                let output = self.predict(input);
+            for (idx, x) in inputs.iter().enumerate() {
+                let target = outputs[idx];
 
-                // Compute the difference between the actual and the desired output
-                let error = outputs[i] - output;
+                // ---- Forward pass ----
+                let mut h = [0.0; HIDDEN];
+                let mut h_sum = [0.0; HIDDEN];
 
-                // Find the gradient of the loss function
-                // (sort of like a hint about the direction to adjust the weights in)
-                let delta = derivative(output);
-
-                // Adjust the weights and the bias to reduce error in the output
-                for (weight, input) in self.weights.iter_mut().zip(input) {
-                    *weight += self.learning_rate * error * *input * delta;
+                for j in 0..HIDDEN {
+                    h_sum[j] = self.b1[j];
+                    for i in 0..INPUT {
+                        h_sum[j] += self.w1[j][i] * x[i];
+                    }
+                    h[j] = sigmoid(h_sum[j]);
                 }
 
-                self.bias += self.learning_rate * error * delta;
+                let mut y = self.b2;
+                for j in 0..HIDDEN {
+                    y += self.w2[j] * h[j];
+                }
+
+                let error = target - y;
+
+                // ---- Backprop output layer ----
+                for j in 0..HIDDEN {
+                    self.w2[j] += self.lr * error * h[j];
+                }
+                self.b2 += self.lr * error;
+
+                // ---- Backprop hidden layer ----
+                for j in 0..HIDDEN {
+                    let grad = error * self.w2[j] * dsigmoid(h[j]);
+                    for i in 0..INPUT {
+                        self.w1[j][i] += self.lr * grad * x[i];
+                    }
+                    self.b1[j] += self.lr * grad;
+                }
             }
         }
     }
@@ -71,7 +117,7 @@ fn main() {
     let (tran_assert, test_inputs) = data::get_data("data.csv").unwrap();
     let inputs = tran_assert.inputs;
     let outputs = tran_assert.outputs;
-    let mut model: NeuralNetwork<2> = NeuralNetwork::new();
+    let mut model: NeuralNetwork<2, 4> = NeuralNetwork::new();
 
     model.train(inputs, outputs, 100000);
 
