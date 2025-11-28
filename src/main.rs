@@ -70,7 +70,7 @@ impl<const INPUT: usize, const HIDDEN: usize> NeuralNetwork<INPUT, HIDDEN> {
     }
 
     #[allow(clippy::needless_range_loop)]
-    fn train(&mut self, inputs: &Vec<[f64; INPUT]>, outputs: &Vec<f64>, epochs: usize) {
+    fn train(&mut self, inputs: &[[f64; INPUT]], outputs: &[f64], epochs: usize) {
         for _ in 0..epochs {
             for (idx, x) in inputs.iter().enumerate() {
                 let target = outputs[idx];
@@ -125,7 +125,7 @@ fn main() {
         // Pass a set of inputs (two numbers) and get a prediction back which should be a sum of the two numbers
         let prediction = model.predict(input);
         println!(
-            "Input: {:?}, Prediction: {:.1}, result: {output}",
+            "Input: {:?}, Prediction: {:.2}, result: {output}",
             input, prediction
         );
     }
