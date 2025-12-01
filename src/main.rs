@@ -49,10 +49,16 @@ impl<const INPUT: usize, const HIDDEN: usize> NeuralNetwork<INPUT, HIDDEN> {
         }
     }
 
-    #[allow(clippy::needless_range_loop)]
     fn predict(&self, x: &[f64; INPUT]) -> f64 {
-        // Hidden layer
+        let (_, y) = self.forward(x);
+        y
+    }
+
+    #[allow(clippy::needless_range_loop)]
+    fn forward(&self, x: &[f64; INPUT]) -> ([f64; HIDDEN], f64) {
+        // ---- Forward pass ----
         let mut h = [0.0; HIDDEN];
+
         for j in 0..HIDDEN {
             let mut sum = self.b1[j];
             for i in 0..INPUT {
@@ -61,12 +67,11 @@ impl<const INPUT: usize, const HIDDEN: usize> NeuralNetwork<INPUT, HIDDEN> {
             h[j] = sigmoid(sum);
         }
 
-        // Output layer (linear)
         let mut y = self.b2;
         for j in 0..HIDDEN {
             y += self.w2[j] * h[j];
         }
-        y
+        (h, y)
     }
 
     #[allow(clippy::needless_range_loop)]
@@ -76,21 +81,7 @@ impl<const INPUT: usize, const HIDDEN: usize> NeuralNetwork<INPUT, HIDDEN> {
                 let target = outputs[idx];
 
                 // ---- Forward pass ----
-                let mut h = [0.0; HIDDEN];
-                let mut h_sum = [0.0; HIDDEN];
-
-                for j in 0..HIDDEN {
-                    h_sum[j] = self.b1[j];
-                    for i in 0..INPUT {
-                        h_sum[j] += self.w1[j][i] * x[i];
-                    }
-                    h[j] = sigmoid(h_sum[j]);
-                }
-
-                let mut y = self.b2;
-                for j in 0..HIDDEN {
-                    y += self.w2[j] * h[j];
-                }
+                let (h, y) = self.forward(x);
 
                 let error = target - y;
 
