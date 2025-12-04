@@ -6,10 +6,23 @@ mod data {
     use std::fs::File;
     use std::io::BufReader;
 
+    fn from_byte<'de, D>(deserializer: D) -> Result<f64, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: &str = Deserialize::deserialize(deserializer)?;
+        u32::from_str_radix(s.trim_start_matches("0b"), 2)
+            .map_err(serde::de::Error::custom)
+            .map(|data| data as f64)
+    }
+
     #[derive(Debug, Deserialize)]
     struct ReadData {
+        #[serde(deserialize_with = "from_byte")]
         left: f64,
+        #[serde(deserialize_with = "from_byte")]
         right: f64,
+        #[serde(deserialize_with = "from_byte")]
         result: f64,
     }
 
@@ -130,9 +143,9 @@ impl<const INPUT: usize, const HIDDEN: usize> NeuralNetwork<INPUT, HIDDEN> {
         }
     }
 
-    fn predict(&self, x: &[f64; INPUT]) -> bool {
+    fn predict(&self, x: &[f64; INPUT]) -> i32 {
         let (_, y) = self.forward(x);
-        y > 0.5
+        y as i32
     }
 
     #[allow(clippy::needless_range_loop)]
@@ -152,7 +165,7 @@ impl<const INPUT: usize, const HIDDEN: usize> NeuralNetwork<INPUT, HIDDEN> {
         for j in 0..HIDDEN {
             y += self.w2[j] * h[j];
         }
-        (h, sigmoid(y))
+        (h, y)
     }
 
     #[allow(clippy::needless_range_loop)]
@@ -189,9 +202,9 @@ fn main() {
     let (tran_assert, test_inputs) = data::get_data("./data/xor.csv").unwrap();
     let inputs = tran_assert.inputs;
     let outputs = tran_assert.outputs;
-    let mut model: NeuralNetwork<2, 4> = NeuralNetwork::new();
+    let mut model: NeuralNetwork<2, 8> = NeuralNetwork::new();
 
-    model.train(&inputs, &outputs, 100000);
+    model.train(&inputs, &outputs, 200000);
 
     for TestData {
         input: [left, right],
@@ -202,9 +215,9 @@ fn main() {
         let prediction = model.predict(&[*left, *right]);
         let left = *left as i32;
         let right = *right as i32;
-        let output = (*output as i32) == 1;
+        let output = *output as i32;
         println!(
-            "left: 0x{:X}, right: 0x{:X}, Prediction: {}, result: {output}",
+            "left: 0b{:b}, right: 0b{:b}, Prediction: 0b{:b}, result: 0b{output:b}",
             left, right, prediction
         );
     }
