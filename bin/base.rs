@@ -187,7 +187,7 @@ impl<const INPUT: usize, const HIDDEN: usize> NeuralNetwork<INPUT, HIDDEN> {
 }
 
 fn main() {
-    let (tran_assert, test_inputs) = data::get_data("data.csv").unwrap();
+    let (tran_assert, test_inputs) = data::get_data("./data/base.csv").unwrap();
     let inputs = tran_assert.inputs;
     let outputs = tran_assert.outputs;
     let mut model: NeuralNetwork<2, 4> = NeuralNetwork::new();
