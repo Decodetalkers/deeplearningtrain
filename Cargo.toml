@@ -12,3 +12,7 @@ thiserror = "2.0.17"
 [[bin]]
 name = "base"
 path = "./bin/base.rs"
+
+[[bin]]
+name = "xor"
+path = "./bin/xor.rs"
